@@ -1,0 +1,14 @@
+[project]
+name = "horizonarr"
+dynamic = ["version"]
+description = "New, upcoming and classic games, whether you can get them, one click to RetroArr"
+requires-python = ">=3.9"
+license = "MIT"
+
+[tool.ruff]
+line-length = 150
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "SIM"]
+ignore = ["SIM105", "SIM108"]

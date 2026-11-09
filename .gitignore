@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+*.env
+!.env.example
+secrets/
+data/
+*.db
+*.db-*
+.DS_Store
+.ruff_cache/

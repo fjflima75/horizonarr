@@ -1,0 +1,13 @@
+services:
+  horizonarr:
+    image: ghcr.io/fjflima75/horizonarr:latest
+    container_name: horizonarr
+    restart: unless-stopped
+    ports:
+      - "2730:8080"
+    env_file: .env
+    volumes:
+      - ./data:/data
+      # Optional, see .env.example (RETROARR_API_KEY_JSON / RETROARR_DB / RETROARR_STEAM_FOLDER):
+      # - /path/to/retroarr/config:/retroarr-config
+      # - /path/to/library/roms/steam:/retroarr-steam
