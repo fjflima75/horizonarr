@@ -54,6 +54,11 @@ def search_categories(platforms):
     return "4000" if set(platforms) & PC_LIKE else "1000"
 
 
+def add_choices(platforms):
+    """Platforms a game can be added on, best first (the first one is the default)."""
+    return [p for p in ADD_PRIORITY if p in platforms]
+
+
 def pick_for_add(platforms):
     """The platform a new RetroArr entry should use, or None if none of them is known."""
     return next((p for p in ADD_PRIORITY if p in platforms), platforms[0] if platforms else None)

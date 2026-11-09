@@ -160,7 +160,14 @@ class Page:
             if status and status["downloading"] is not None:
                 label = None
             if label:
-                acts.append(f'<button class="btn primary" onclick="act(this,\'/add?id={gid}\')">{label}</button>')
+                choices = platforms.add_choices(g["platforms"])
+                if len(choices) > 1:
+                    opts = "".join(f'<option value="{p}">{e(platforms.name(p))}</option>' for p in choices)
+                    acts.append(f'<select class="plat" title="Plataforma a descarregar">{opts}</select>')
+                    acts.append(f'<button class="btn primary" onclick="act(this,\'/add?id={gid}&platform=\''
+                                f'+this.previousElementSibling.value)">{label}</button>')
+                else:
+                    acts.append(f'<button class="btn primary" onclick="act(this,\'/add?id={gid}\')">{label}</button>')
         if self.app.retroarr and g.get("steam") and not (status and status["wishlisted"]):
             acts.append(f'<button class="btn" onclick="act(this,\'/wishlist?id={gid}\')">⭐ Wishlist</button>')
         if self.app.prowlarr and g.get("date") and g["date"] <= now and not (avail and avail[0]):
@@ -384,7 +391,8 @@ def make_handler(app):
                     done = app.grab_pending()
                     return self.json(200, {"ok": True, "msg": f"{len(done)} jogos", "done": done})
                 if url.path == "/add":
-                    return self.json(200, {"ok": True, "msg": app.add(gid)})
+                    plat = int(params["platform"]) if params.get("platform") else None
+                    return self.json(200, {"ok": True, "msg": app.add(gid, platform=plat)})
                 if url.path == "/wishlist":
                     return self.json(200, {"ok": True, "msg": app.wishlist(gid)})
                 if url.path == "/follow":

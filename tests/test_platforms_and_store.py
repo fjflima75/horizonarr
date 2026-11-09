@@ -11,6 +11,11 @@ from horizonarr.store import Store
 
 
 class PlatformsTest(unittest.TestCase):
+    def test_add_choices_ordered_by_priority(self):
+        self.assertEqual(platforms.add_choices([167, 6, 130]), [6, 130, 167])
+        self.assertEqual(platforms.add_choices([19]), [19])
+        self.assertEqual(platforms.add_choices([999999]), [])
+
     def test_pick_for_add_prefers_pc_then_newest_nintendo(self):
         self.assertEqual(platforms.pick_for_add([167, 6, 130]), 6)
         self.assertEqual(platforms.pick_for_add([130, 508]), 508)

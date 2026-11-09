@@ -22,7 +22,7 @@ Horizonarr is a small self-hosted companion for a game *arr stack. It answers "w
   A detail page adds screenshots, every video, developers, publishers and release dates.
 - **🟢 Available**: a paced background job asks your **Prowlarr** indexers whether a release exists, with size and seeders. It runs one search a minute with a daily budget, so indexers don't rate-limit you. A **🔎 Check** button looks up any game on demand.
 - **Library badges** from RetroArr: 📚 *I have it*, ⏬ *downloading 45%*, ⭐ *wishlist*, 👁 *being searched*. You can also hide what you already own.
-- **Add** sends a game to RetroArr as *monitored*, on the right platform and in a "Novidades" collection, and RetroArr's sweep downloads it when a good release shows up. **⭐ Wishlist** adds Steam games to RetroArr's wishlist with a price watch.
+- **⬇ Download / Add** sends a game to RetroArr as *monitored* and in a "Novidades" collection. Released games are searched and grabbed right away; upcoming ones download when a good release shows up. When a game is on several systems, a selector next to the button picks the platform (PC first by default). **⭐ Wishlist** adds Steam games to RetroArr's wishlist with a price watch.
 - **Follow** games and get **ntfy** pushes when they come out, become available or get cheaper on Steam, plus a weekly digest.
 
 Only the Python standard library is used, there is no build step, and the image is small. The UI is in Portuguese for now; contributions for other languages are welcome.

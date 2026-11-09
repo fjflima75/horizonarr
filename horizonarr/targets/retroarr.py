@@ -97,9 +97,10 @@ class RetroArr:
         return {"coverUrl": f"https://images.igdb.com/igdb/image/upload/t_cover_big/{game['cover']}.jpg"} \
             if game.get("cover") else None
 
-    def add(self, game):
-        """Monitored entry on the best platform + the Novidades collection. Returns (id, igdb platform)."""
-        igdb_platform = pick_for_add(game["platforms"])
+    def add(self, game, igdb_platform=None):
+        """Monitored entry on the chosen platform (default: the best one) + the Novidades collection.
+        Returns (id, igdb platform)."""
+        igdb_platform = igdb_platform or pick_for_add(game["platforms"])
         pid = self.platform_id(igdb_platform)
         if not pid:
             raise ValueError("RetroArr has no matching platform")

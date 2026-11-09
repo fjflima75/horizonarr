@@ -20,7 +20,7 @@
   A página de detalhe acrescenta capturas de ecrã, todos os vídeos, produtoras e datas de lançamento.
 - **🟢 Disponível:** pergunta aos teus indexers do **Prowlarr** se há versão. Faz uma pesquisa por minuto, com limite diário, para os indexers não te bloquearem. O botão **🔎 Ver versão** pesquisa qualquer jogo na hora.
 - **Selos da biblioteca (RetroArr):** 📚 Tenho, ⏬ A descarregar, ⭐ Wishlist, 👁 À procura. Há também um filtro para esconder o que já tens.
-- **Adicionar:** mete o jogo no RetroArr como *monitored* e na coleção "Novidades", e o RetroArr descarrega-o quando houver versão boa. **⭐ Wishlist:** junta os jogos Steam ao wishlist do RetroArr, com alerta de preço.
+- **⬇ Descarregar / Adicionar:** mete o jogo no RetroArr como *monitored* e na coleção "Novidades". Se já saiu, procura e descarrega logo; se ainda não saiu, descarrega quando houver versão boa. Quando o jogo existe em vários sistemas, um seletor ao lado do botão escolhe a plataforma (por omissão, PC primeiro). **⭐ Wishlist:** junta os jogos Steam ao wishlist do RetroArr, com alerta de preço.
 - **Seguir:** avisos no **ntfy** quando o jogo sai, fica disponível ou baixa de preço, e um resumo semanal.
 
 A configuração está no [README em inglês](README.md#quick-start) e no `.env.example`. Só é obrigatória uma app grátis da Twitch, que dá acesso ao IGDB.

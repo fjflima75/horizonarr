@@ -142,10 +142,13 @@ class App:
         return p
 
     # ---------- actions ----------
-    def add(self, gid, download=True):
-        """Add to RetroArr (monitored) and, if the game is out, download it now instead of waiting for the sweep."""
+    def add(self, gid, download=True, platform=None):
+        """Add to RetroArr (monitored) and, if the game is out, download it now instead of waiting for the sweep.
+        `platform` (IGDB id) picks the system; it must be one the game is on."""
         game = self.store.get_game(gid)
-        rid, igdb_platform = self.retroarr.add(game)
+        if platform is not None and platform not in game["platforms"]:
+            raise ValueError(f"{game['name']} não existe em {platforms.name(platform)}")
+        rid, igdb_platform = self.retroarr.add(game, platform)
         self.store.follow(gid)  # anything you add, you'll hear about
         msg = f"no RetroArr ({platforms.name(igdb_platform)})"
         if download and game.get("date") and game["date"] <= time.time():
