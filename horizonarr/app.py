@@ -52,7 +52,40 @@ class App:
         self.store.set("genres", {"at": int(time.time()), "list": lst})
         return lst
 
-    def explore(self, platform, year=None, decade=None, month=None, sort="popular", page=0, genre=None):
+    def themes(self):
+        cached = self.store.get("themes")
+        if cached and time.time() - cached["at"] < 7 * DAY:
+            return [tuple(x) for x in cached["list"]]
+        lst = self.igdb.themes()
+        self.store.set("themes", {"at": int(time.time()), "list": lst})
+        return lst
+
+    def refresh_for_you(self):
+        """'Parecidos com o que tens': games IGDB lists as similar to the ones you own, most mentioned first."""
+        if not self.retroarr:
+            return
+        seeds, owned = self.retroarr.owned_seeds()
+        if not seeds:
+            return
+        votes, because = {}, {}
+        for src, similar in self.igdb.similar(seeds).items():
+            for gid in similar:
+                if gid in owned:
+                    continue
+                votes[gid] = votes.get(gid, 0) + 1
+                because.setdefault(gid, src)
+        ranked = sorted(votes, key=lambda g: -votes[g])[:240]
+        games = self.igdb.by_ids(ranked)
+        self.store.put_games(games)
+        names = {g["id"]: g["name"] for g in self.igdb.by_ids(list({because[g] for g in ranked}))}
+        by_id = {g["id"]: g for g in games}
+        ordered = sorted((g for g in ranked if g in by_id), key=lambda g: (-votes[g], -by_id[g]["rating_count"]))
+        self.store.put_list("foryou", ordered)
+        self.store.set("foryou_because", {str(g): names.get(because[g], "") for g in ordered})
+        log.info("for you: %d suggestions from %d owned games", len(ordered), len(seeds))
+
+    def explore(self, platform, year=None, decade=None, month=None, sort="popular", page=0, genre=None,
+                min_rating=None, mode=None, theme=None):
         if month and year:
             start = calendar.timegm((year, month, 1, 0, 0, 0))
             end = calendar.timegm((year + (month == 12), month % 12 + 1, 1, 0, 0, 0))
@@ -62,10 +95,11 @@ class App:
             decade = decade or 1990
             start, end = calendar.timegm((decade, 1, 1, 0, 0, 0)), calendar.timegm((decade + 10, 1, 1, 0, 0, 0))
         plats = [platform] if platform else []
-        key = f"explore:{platform}:{start}:{end}:{sort}:{page}:{genre}"
+        key = f"explore:{platform}:{start}:{end}:{sort}:{page}:{genre}:{min_rating}:{mode}:{theme}"
         ids, _ = self.store.get_list(key, max_age=7 * DAY)
         if ids is None:
-            games = self.igdb.explore(plats, start, end, sort=sort, offset=page * 60, genre=genre)
+            games = self.igdb.explore(plats, start, end, sort=sort, offset=page * 60, genre=genre,
+                                      min_rating=min_rating, mode=mode, theme=theme)
             self.store.put_games(games)
             ids = [g["id"] for g in games]
             self.store.put_list(key, ids)
@@ -201,6 +235,9 @@ class App:
             if self.retroarr and now - last_library > 600:
                 self._safe(self.retroarr.refresh)
                 last_library = now
+                if self.igdb and now - self.store.get("foryou_updated", 0) > DAY:
+                    self._safe(self.refresh_for_you)
+                    self.store.set("foryou_updated", int(now))
             self._safe(self.check_follows)
             sent = self.store.get("digest_sent", 0)
             if (local.tm_wday == self.cfg.digest_weekday and local.tm_hour == self.cfg.digest_hour

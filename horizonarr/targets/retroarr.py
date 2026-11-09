@@ -41,8 +41,11 @@ class RetroArr:
         for q in self.call("GET", "/downloadclient/queue") or []:
             if q.get("gameId") and q.get("trackedState") != "Imported":
                 queue[q["gameId"]] = round(q.get("progress") or 0)
-        by_igdb, by_steam = {}, {}
+        by_igdb, by_steam, owned = {}, {}, []
         for g in games:
+            if g.get("igdbId") and g["id"] not in wished and (
+                    g.get("status") in ("Downloaded", "Installed") or g.get("platformId") in STORE_PLATFORMS):
+                owned.append({"igdb": g["igdbId"], "rating": g.get("rating") or 0, "id": g["id"]})
             entry = {"id": g["id"], "status": g.get("status"), "monitored": g.get("monitored"),
                      "platform": g.get("platformName"), "store": g.get("platformId") in STORE_PLATFORMS,
                      "wishlisted": g["id"] in wished,
@@ -52,8 +55,16 @@ class RetroArr:
             if g.get("steamId"):
                 by_steam.setdefault(g["steamId"], []).append(entry)
         with self._lock:
-            self._snapshot = {"by_igdb": by_igdb, "by_steam": by_steam, "taken": int(time.time())}
+            self._snapshot = {"by_igdb": by_igdb, "by_steam": by_steam, "owned": owned, "taken": int(time.time())}
         log.info("retroarr snapshot: %d games, %d downloading", len(games), len(queue))
+
+    def owned_seeds(self, top_rated=40, newest=20):
+        """IGDB ids of owned games to base recommendations on: the best rated plus the latest added."""
+        with self._lock:
+            owned = list(self._snapshot.get("owned", []))
+        best = sorted(owned, key=lambda o: -o["rating"])[:top_rated]
+        latest = sorted(owned, key=lambda o: -o["id"])[:newest]
+        return list(dict.fromkeys(o["igdb"] for o in best + latest)), {o["igdb"] for o in owned}
 
     def status(self, game):
         """Badges for a game: owned / downloading / wishlisted / monitored."""

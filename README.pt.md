@@ -8,6 +8,9 @@
 
 - **Recentes** (últimos 30 dias) e **Brevemente** (próximos 90 dias), para PC, Mac, Switch, Switch 2, PlayStation, Xbox e sistemas retro.
 - **Explorar qualquer época:** escolhes a década, o ano, o mês, o sistema (do Atari 2600 à PS5) e o género, e ordenas por popularidade ou por nota.
+- **Para ti:** jogos parecidos com os que tens no RetroArr, com o jogo teu que deu origem a cada sugestão.
+- **Calendário:** os lançamentos dia a dia, com filtros, ou só os jogos que segues.
+- **Filtros no Explorar:** tema (terror, ficção científica, mundo aberto…), modo (cooperativo, ecrã dividido…) e nota mínima.
 - **Pesquisa** por nome.
 - **Em cada jogo:**
   - capa, sinopse, géneros e nota;

@@ -10,6 +10,8 @@ GAME_TYPES = "0,8,9,10,11"  # main game, remake, remaster, expanded game, port (
 LIST_FIELDS = ("fields name,url,summary,cover.image_id,genres.name,themes.name,total_rating,total_rating_count,"
                "hypes,first_release_date,platforms,release_dates.date,release_dates.platform,videos.video_id,"
                "external_games.uid,external_games.external_game_source;")
+MODES = [(1, "Um jogador"), (2, "Multijogador"), (3, "Cooperativo"), (4, "Ecrã dividido"), (5, "MMO"),
+         (6, "Battle Royale")]
 SORTS = {"popular": "total_rating_count desc", "rating": "total_rating desc", "date": "first_release_date asc",
          "hype": "hypes desc"}
 
@@ -82,13 +84,42 @@ class IGDB:
     def genres(self):
         return sorted((g["id"], g["name"]) for g in self.query("genres", "fields name; limit 100;"))
 
-    def explore(self, platforms, start, end, sort="popular", offset=0, limit=60, genre=None):
+    def themes(self):
+        return sorted((t["id"], t["name"]) for t in self.query("themes", "fields name; limit 100;"))
+
+    def by_ids(self, ids):
+        """Full list records for these IGDB ids (any order), skipping DLC/bundles."""
+        out = []
+        for i in range(0, len(ids), 400):
+            part = ids[i:i + 400]
+            out += [self.to_game(g) for g in self.query(
+                "games", LIST_FIELDS + f" where id = ({','.join(map(str, part))}) & game_type = ({GAME_TYPES});"
+                                      f" limit {len(part)};")]
+        return out
+
+    def similar(self, ids):
+        """{game id: [similar game ids]} for the given games."""
+        out = {}
+        for i in range(0, len(ids), 400):
+            part = ids[i:i + 400]
+            for g in self.query("games", f"fields similar_games; where id = ({','.join(map(str, part))}); limit {len(part)};"):
+                out[g["id"]] = g.get("similar_games", [])
+        return out
+
+    def explore(self, platforms, start, end, sort="popular", offset=0, limit=60, genre=None,
+                min_rating=None, mode=None, theme=None):
         """Games first released between start and end, on any of these platforms (empty = any)."""
         where = [f"first_release_date >= {start}", f"first_release_date < {end}", f"game_type = ({GAME_TYPES})"]
         if platforms:
             where.append(f"platforms = ({','.join(map(str, platforms))})")
         if genre:
             where.append(f"genres = ({int(genre)})")
+        if min_rating:
+            where.append(f"total_rating >= {int(min_rating)} & total_rating_count > 2")
+        if mode:
+            where.append(f"game_modes = ({int(mode)})")
+        if theme:
+            where.append(f"themes = ({int(theme)})")
         if sort == "rating":
             where.append("total_rating_count > 4")
         batch = self.query("games", LIST_FIELDS + f" where {' & '.join(where)}; sort {SORTS.get(sort, SORTS['popular'])};"

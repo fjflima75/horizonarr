@@ -10,6 +10,9 @@ Horizonarr is a small self-hosted companion for a game *arr stack. It answers "w
 
 - **Recent** (last 30 days) and **Upcoming** (next 90 days) for PC, Mac, Switch, Switch 2, PlayStation, Xbox and retro systems, sorted by hype or by date.
 - **Explore any era**: pick a decade, year and month, a system (from Atari 2600 to PS5), a genre, and sort by popularity or rating. Chrono Trigger on SNES in 1995 is two clicks away.
+- **For you**: games IGDB lists as similar to the ones you own in RetroArr, most mentioned first, each with the owned game that suggested it.
+- **Calendar**: upcoming releases day by day, filterable by system and genre, or only the games you follow.
+- **Explore filters**: theme (horror, sci-fi, open world…), game mode (co-op, split screen, multiplayer…) and minimum rating.
 - **Search** any game by name.
 - On every game you get:
   - cover, synopsis, genres and rating;

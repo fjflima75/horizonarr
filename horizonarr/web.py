@@ -9,13 +9,19 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import __version__, platforms
+from .sources.igdb import MODES
 
 log = logging.getLogger("horizonarr")
 with open(os.path.join(os.path.dirname(__file__), "templates", "page.html"), encoding="utf-8") as _f:
     TEMPLATE = string.Template(_f.read())
 IMG = "https://images.igdb.com/igdb/image/upload"
 MONTHS = ["", "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-TABS = [("recentes", "Recentes"), ("brevemente", "Brevemente"), ("explorar", "Explorar"), ("seguir", "A seguir")]
+TABS = [("recentes", "Recentes"), ("brevemente", "Brevemente"), ("calendario", "Calendário"), ("parati", "Para ti"),
+        ("explorar", "Explorar"), ("seguir", "A seguir")]
+WEEKDAYS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
+MONTH_NAMES = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro",
+               "Outubro", "Novembro", "Dezembro"]
+DAY_S = 86400
 PAGE_SIZE = 120
 e = html.escape
 
@@ -77,7 +83,7 @@ class Page:
                    f'<a class="{"on" if sort == "data" else ""}" href="{self.link(sort="data")}">Por data</a></div>')
         return "".join(out)
 
-    def explore_form(self, genres):
+    def explore_form(self, genres, themes=()):
         p = self.p
         now_year = time.gmtime().tm_year
         decades = range(1970, now_year + 1, 10)
@@ -101,12 +107,18 @@ class Page:
                 f'<span class="label">Plataforma</span><select name="plat" onchange="this.form.submit()">{plat_opts}</select>'
                 f'<span class="label">Género</span><select name="genre" onchange="this.form.submit()"><option value="">Todos</option>'
                 f'{opts([g[0] for g in genres], p.get("genre", ""), [g[1] for g in genres])}</select>'
+                f'<span class="label">Tema</span><select name="theme" onchange="this.form.submit()"><option value="">Todos</option>'
+                f'{opts([t[0] for t in themes], p.get("theme", ""), [t[1] for t in themes])}</select>'
+                f'<span class="label">Modo</span><select name="mode" onchange="this.form.submit()"><option value="">Todos</option>'
+                f'{opts([m[0] for m in MODES], p.get("mode", ""), [m[1] for m in MODES])}</select>'
+                f'<span class="label">Nota mín.</span><select name="minr" onchange="this.form.submit()"><option value="">Qualquer</option>'
+                f'{opts([60, 70, 80, 90], p.get("minr", ""), ["60+", "70+", "80+", "90+"])}</select>'
                 f'<span class="label">Ordem</span><select name="esort" onchange="this.form.submit()">'
                 f'{opts(["popular", "rating", "date"], p.get("esort", "popular"), ["Mais populares", "Melhor avaliados", "Por data"])}'
                 '</select></form>')
 
     # ---------- cards ----------
-    def card(self, g, avail, price, status, following):
+    def card(self, g, avail, price, status, following, because=None):
         now = time.time()
         cover = (f'<img loading="lazy" src="{IMG}/t_cover_big/{g["cover"]}.jpg" alt="">' if g.get("cover") else "")
         badges = []
@@ -152,6 +164,8 @@ class Page:
         acts.append(f'<button class="btn" onclick="act(this,\'/follow?id={gid}&on={0 if following else 1}\')">'
                     f'{"★ A seguir" if following else "☆ Seguir"}</button>')
         summary = f'<div class="summary" title="Clica para ler tudo">{e(g["summary"])}</div>' if g.get("summary") else ""
+        if because:
+            summary = f'<div class="meta">Porque tens <b>{e(because)}</b></div>' + summary
         return (f'<article class="card"><div class="cover"><a href="/game/{gid}">{cover}</a>'
                 f'<span class="badges">{"".join(badges)}</span>{cover_play}</div>'
                 f'<div class="body"><div class="name"><a href="/game/{gid}">{e(g["name"])}</a></div>'
@@ -159,7 +173,45 @@ class Page:
                 f'<div class="chips">{plats}</div>{summary}{a_html}{p_html}'
                 f'<div class="acts">{"".join(acts)}</div></div></article>')
 
-    def grid(self, games, more_link=None):
+    def calendar(self):
+        """Upcoming releases (and followed games) grouped by day, compact rows."""
+        now = time.time()
+        ids, _ = self.app.store.get_list("upcoming")
+        follows = self.app.store.follows()
+        games = {g["id"]: g for g in self.app.store.get_games(list(dict.fromkeys((ids or []) + list(follows))))}
+        games = [g for g in games.values() if g.get("date") and g["date"] >= now - DAY_S]
+        genres_present = sorted({x for g in games for x in g.get("genres", [])})
+        games = self.filtered(games)
+        if self.p.get("seg") == "1":
+            games = [g for g in games if g["id"] in follows]
+        games.sort(key=lambda g: (g["date"], -g["hypes"]))
+        seg = self.p.get("seg") == "1"
+        out = [self.chip_filters(genres_present),
+               f'<div class="filters"><a class="{"on" if not seg else ""}" href="{self.link(seg="")}">Todos</a>'
+               f'<a class="{"on" if seg else ""}" href="{self.link(seg="1")}">★ Só os que sigo</a></div>']
+        if not games:
+            return "".join(out) + '<div class="empty">Nada marcado para os próximos 90 dias com estes filtros.</div>'
+        day, month = None, None
+        rows = []
+        for g in games[:400]:
+            t = time.gmtime(g["date"])
+            if (t.tm_year, t.tm_mon) != month:
+                month = (t.tm_year, t.tm_mon)
+                rows.append(f'<h3 class="cal-month">{MONTH_NAMES[t.tm_mon]} {t.tm_year}</h3>')
+            if t.tm_yday != day:
+                day = t.tm_yday
+                rows.append(f'<div class="cal-day">{WEEKDAYS[t.tm_wday]} {t.tm_mday}</div>')
+            cover = f'<img loading="lazy" src="{IMG}/t_cover_small/{g["cover"]}.jpg" alt="">' if g.get("cover") else '<span></span>'
+            plats = "".join(f'<span class="chip">{e(platforms.name(x))}</span>' for x in platforms.known(g["platforms"])[:5])
+            star = "★ " if g["id"] in follows else ""
+            hype = f'<span class="meta">🔥 {g["hypes"]}</span>' if g.get("hypes") else ""
+            follow = (f'<button class="btn" onclick="act(this,\'/follow?id={g["id"]}&on={0 if g["id"] in follows else 1}\')">'
+                      f'{"★" if g["id"] in follows else "☆"}</button>')
+            rows.append(f'<div class="cal-row">{cover}<div><a class="name" href="/game/{g["id"]}">{star}{e(g["name"])}</a>'
+                        f'<div class="chips">{plats}{hype}</div></div>{follow}</div>')
+        return "".join(out) + f'<section class="cal">{"".join(rows)}</section>'
+
+    def grid(self, games, more_link=None, because=None):
         if not games:
             return '<div class="empty">Nada para mostrar com estes filtros.</div>'
         ids = [g["id"] for g in games]
@@ -169,7 +221,8 @@ class Page:
         cards = []
         for g in games:
             status = self.app.retroarr.status(g) if self.app.retroarr else None
-            cards.append(self.card(g, avail.get(g["id"], (None, 0)), prices.get(g["id"]), status, g["id"] in follows))
+            cards.append(self.card(g, avail.get(g["id"], (None, 0)), prices.get(g["id"]), status, g["id"] in follows,
+                                   (because or {}).get(str(g["id"]))))
         pager = f'<div class="pager"><a class="btn" href="{more_link}">Mostrar mais</a></div>' if more_link else ""
         return f'<section class="grid">{"".join(cards)}</section>{pager}'
 
@@ -212,13 +265,31 @@ class Page:
             month = int(self.p["month"]) if self.p.get("month") else None
             games = self.app.explore(plat, year=year, decade=int(self.p.get("decade", 1990)), month=month,
                                      sort=self.p.get("esort", "popular"), page=page,
-                                     genre=self.p.get("genre") or None)
+                                     genre=self.p.get("genre") or None, min_rating=self.p.get("minr") or None,
+                                     mode=self.p.get("mode") or None, theme=self.p.get("theme") or None)
             nav = '<div class="pager">'
             if page:
                 nav += f'<a class="btn" href="{self.link(page=page - 1)}">← Anteriores</a>'
             if len(games) == 60:
                 nav += f'<a class="btn" href="{self.link(page=page + 1)}">Seguintes →</a>'
-            parts += [self.explore_form(genres), self.grid(games), nav + "</div>"]
+            themes = self.app.themes() if self.app.igdb else []
+            parts += [self.explore_form(genres, themes), self.grid(games), nav + "</div>"]
+        elif tab == "parati":
+            ids, updated = self.app.store.get_list("foryou")
+            because = self.app.store.get("foryou_because", {})
+            games = self.app.store.get_games(ids or [])
+            genres_present = sorted({x for g in games for x in g.get("genres", [])})
+            games = self.filtered(games)
+            if not ids:
+                parts.append('<div class="empty">Ainda a preparar sugestões a partir da tua biblioteca do RetroArr…</div>')
+            else:
+                parts += [self.chip_filters(genres_present),
+                          f'<p class="sub">Parecidos com jogos que tens · {len(games)} sugestões · '
+                          f'atualizado {time.strftime("%d/%m", time.localtime(updated))}</p>',
+                          self.grid(games[:limit], self.link(n=limit + PAGE_SIZE) if len(games) > limit else None,
+                                    because=because)]
+        elif tab == "calendario":
+            parts.append(self.calendar())
         elif tab == "seguir":
             follows = self.app.store.follows()
             games = sorted(self.app.store.get_games(list(follows)), key=lambda g: g.get("date") or 0, reverse=True)
