@@ -142,12 +142,28 @@ class App:
         return p
 
     # ---------- actions ----------
-    def add(self, gid):
+    def add(self, gid, download=True):
+        """Add to RetroArr (monitored) and, if the game is out, download it now instead of waiting for the sweep."""
         game = self.store.get_game(gid)
         rid, igdb_platform = self.retroarr.add(game)
         self.store.follow(gid)  # anything you add, you'll hear about
+        msg = f"no RetroArr ({platforms.name(igdb_platform)})"
+        if download and game.get("date") and game["date"] <= time.time():
+            msg = self.retroarr.grab(rid, game["name"])
         self._refresh_library_soon()
-        return f"no RetroArr ({platforms.name(igdb_platform)})"
+        return msg
+
+    def grab_pending(self):
+        """Download now every followed, released game that RetroArr has but isn't owned or downloading."""
+        done = []
+        for g in self.store.get_games(list(self.store.follows())):
+            if not g.get("date") or g["date"] > time.time():
+                continue
+            st = self.retroarr.status(g)
+            if st["owned"] or st["downloading"] is not None or not st["monitored"]:
+                continue
+            done.append(f"{g['name']}: {self.add(g['id'])}")
+        return done
 
     def wishlist(self, gid):
         self.retroarr.wishlist(self.store.get_game(gid))

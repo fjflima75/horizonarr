@@ -155,7 +155,12 @@ class Page:
         gid = g["id"]
         acts = []
         if self.app.retroarr and not (status and status["owned"]):
-            acts.append(f'<button class="btn primary" onclick="act(this,\'/add?id={gid}\')">Adicionar</button>')
+            released = bool(g.get("date") and g["date"] <= now)
+            label = "⬇ Descarregar" if released else "Adicionar"
+            if status and status["downloading"] is not None:
+                label = None
+            if label:
+                acts.append(f'<button class="btn primary" onclick="act(this,\'/add?id={gid}\')">{label}</button>')
         if self.app.retroarr and g.get("steam") and not (status and status["wishlisted"]):
             acts.append(f'<button class="btn" onclick="act(this,\'/wishlist?id={gid}\')">⭐ Wishlist</button>')
         if self.app.prowlarr and g.get("date") and g["date"] <= now and not (avail and avail[0]):
@@ -375,6 +380,9 @@ def make_handler(app):
                     return self.json(200, {"ok": True, "msg": "a atualizar"})
                 if url.path == "/digest":
                     return self.json(200, {"ok": True, "msg": app.digest()})
+                if url.path == "/grab-pending":
+                    done = app.grab_pending()
+                    return self.json(200, {"ok": True, "msg": f"{len(done)} jogos", "done": done})
                 if url.path == "/add":
                     return self.json(200, {"ok": True, "msg": app.add(gid)})
                 if url.path == "/wishlist":

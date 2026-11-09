@@ -6,6 +6,7 @@ import threading
 import time
 
 from .. import net
+from ..matching import similarity
 from ..platforms import pick_for_add
 
 log = logging.getLogger("horizonarr")
@@ -121,6 +122,30 @@ class RetroArr:
         except net.HTTPError:
             pass  # already in it
         return gid, igdb_platform
+
+    def grab(self, rid, wanted_name, min_similarity=0.65, min_seeders=2):
+        """Search now in RetroArr; if its own rules didn't queue anything, send the best matching release.
+        Returns a short description of what happened."""
+        res = self.call("POST", f"/games/{rid}/search-now", timeout=240) or {}
+        if res.get("autoQueued"):
+            return f"a descarregar: {res.get('autoQueuedRelease') or 'versão escolhida pelo RetroArr'}"
+        best = None
+        for s in res.get("scored", []):
+            url = s.get("magnetUrl") or s.get("downloadUrl")
+            if not url or s.get("decision") == "Reject" or (s.get("seeders") or 0) < min_seeders:
+                continue
+            if similarity(wanted_name, s.get("title", "")) < min_similarity:
+                continue
+            key = (s.get("score") or 0, s.get("seeders") or 0)
+            if best is None or key > best[0]:
+                best = (key, s, url)
+        if not best:
+            return "à procura: ainda sem versão que sirva (o RetroArr volta a tentar sozinho)"
+        _, s, url = best
+        self.call("POST", "/downloadclient/add", {"url": url, "protocol": s.get("protocol") or "torrent",
+                                                  "gameId": rid, "releaseTitle": s.get("title")})
+        size = (s.get("size") or 0) / 1e9
+        return f"a descarregar: {s.get('title')} ({size:.1f} GB)"
 
     def wishlist(self, game):
         """Steam entry (not owned) + wishlist + Steam price watch."""
